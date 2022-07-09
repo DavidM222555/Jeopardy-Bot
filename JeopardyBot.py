@@ -98,7 +98,7 @@ class JeopardyBot(commands.Bot):
                 edit_distance = nltk.edit_distance(self.current_answer, answer_arg)
 
                 # If question was answered correctly (or close enough to correctly)
-                if(edit_distance < 10):
+                if(edit_distance < 3):
                     response_str = "Correct answer <@" + str(message_sender_id) + ">"
 
                     await ctx.send(response_str)
@@ -111,6 +111,10 @@ class JeopardyBot(commands.Bot):
                 else:
                     response_str = "Incorrect answer <@" + str(message_sender_id) + ">"
                     self.users_that_have_answered.append(message_sender)
+
+                    # Decrement game scores
+                    self.sqlWrapper.increment_questions_incorrect(message_sender)
+                    self.sqlWrapper.increment_game_score(message_sender, -1 * self.jWrapper.convert_value_to_int(self.current_value))
 
                     await ctx.send(response_str)
 
