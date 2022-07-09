@@ -1,14 +1,15 @@
 import disnake 
 from disnake.ext import commands 
 
-from dotenv import load_dotenv
 import os
 import asyncio
+from dotenv import load_dotenv
 
-from dotenv import load_dotenv 
 from JeopardyFuncs import JeopardyWrapper
+from SQLWrapper import SqlLiteWrapper
 
 import nltk
+
 
 load_dotenv('.env')
 
@@ -20,6 +21,8 @@ class JeopardyBot(commands.Bot):
         intents.message_content = True 
 
         self.jWrapper = JeopardyWrapper()
+        self.sqlWrapper = SqlLiteWrapper()
+
         self.current_category = None
         self.current_question = None 
         self.current_answer = None 
@@ -28,6 +31,8 @@ class JeopardyBot(commands.Bot):
         self.question_valid = False
         self.question_currently_being_asked = False 
         self.question_answered_correctly = False
+
+        self.users_that_have_answered = []
 
         super().__init__(command_prefix=commands.when_mentioned_or('$'), intents=intents, *args, **kwargs)
 
@@ -59,11 +64,12 @@ class JeopardyBot(commands.Bot):
             self.question_currently_being_asked = True
             self.question_answered_correctly = False
 
-            sent_message = await ctx.send(self.current_question)
+            self.users_that_have_answered = []
+
+            await ctx.send(self.current_question)
 
             print(self.current_answer)
             print(self.current_value)
-            print(sent_message.id)
 
             await asyncio.sleep(15)
 
@@ -78,19 +84,33 @@ class JeopardyBot(commands.Bot):
 
         @self.command(name='answer', pass_context=True)
         async def answer(ctx, answer_arg):
+            message_sender = str(ctx.message.author)
+            message_sender_id = ctx.message.author.id
+
             if(self.question_valid != True):
                 await ctx.send("Question not currently valid")
-                print("Answer not completed ")
+            elif(message_sender in self.users_that_have_answered):
+                await ctx.send("You have already tried to answer this question")
             else:
-                print("Answer will be considered")
+                self.current_answer = self.current_answer.lower()
+                answer_arg = answer_arg.lower()
 
                 edit_distance = nltk.edit_distance(self.current_answer, answer_arg)
 
+                # If question was answered correctly (or close enough to correctly)
                 if(edit_distance < 10):
-                    await ctx.send("Correct answer!")
-                    self.question_answered_correctly = True
-                    return
+                    response_str = "Correct answer <@" + str(message_sender_id) + ">"
 
-                
-            
+                    await ctx.send(response_str)
+                    self.question_answered_correctly = True
+
+                    self.sqlWrapper.increment_questions_correct(message_sender)
+                    self.sqlWrapper.increment_game_score(message_sender, self.jWrapper.convert_value_to_int(self.current_value))
+
+                    return
+                else:
+                    response_str = "Incorrect answer <@" + str(message_sender_id) + ">"
+                    self.users_that_have_answered.append(message_sender)
+
+                    await ctx.send(response_str)
 

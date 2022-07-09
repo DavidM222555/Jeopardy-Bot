@@ -5,6 +5,12 @@ class JeopardyWrapper:
     def __init__(self):
         self.jeopardy_df = pd.read_csv('assets/JEOPARDY_CSV.csv')
 
+    def convert_value_to_int(self, question_value) -> int:
+        if(question_value == "None"):
+            return 4000
+        else:
+            return int(question_value[1::])
+
 
     def get_random_entry(self) -> Tuple[str, str, str, int]:
         question = None 

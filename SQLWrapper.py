@@ -30,13 +30,20 @@ class SqlLiteWrapper():
         self.conn.commit()
 
 
-    def get_current_score(self, user_id: str):
+    def add_user_if_doesnt_exist(self, user_id: str) -> None:
+        if not self.user_exists_in_leaderboard(user_id):
+            self.add_user_to_leaderboard(user_id)
+
+
+    def get_current_score(self, user_id: str) -> int:
         self.cur.execute("SELECT current_score FROM leaderboard WHERE user_id = ?", (user_id,))
 
         return self.cur.fetchone()[0]
 
 
-    def increment_game_score(self, user_id: str, score_increment: int):
+    def increment_game_score(self, user_id: str, score_increment: int) -> None:
+        self.add_user_if_doesnt_exist(user_id)
+
         old_score = self.get_current_score(user_id)
         new_score = old_score + score_increment
 
@@ -44,26 +51,30 @@ class SqlLiteWrapper():
         self.conn.commit()
 
 
-    def get_questions_answered_correctly(self, user_id: str):
+    def get_questions_answered_correctly(self, user_id: str) -> int:
         self.cur.execute("SELECT questions_answered_correctly FROM leaderboard WHERE user_id = ?", (user_id,))
 
         return self.cur.fetchone()[0]
 
 
-    def increment_questions_correct(self, user_id: str):
+    def increment_questions_correct(self, user_id: str) -> None:
+        self.add_user_if_doesnt_exist(user_id)
+
         new_questions_correct = self.get_questions_answered_correctly(user_id) + 1
 
         self.cur.execute("UPDATE leaderboard SET questions_answered_correctly = ? WHERE user_id = ?", (new_questions_correct, user_id))
         self.conn.commit()
 
 
-    def get_questions_answered_incorrectly(self, user_id: str):
+    def get_questions_answered_incorrectly(self, user_id: str) -> int:
         self.cur.execute("SELECT questions_answered_incorrectly FROM leaderboard WHERE user_id = ?", (user_id,))
 
         return self.cur.fetchone()[0]
 
 
-    def increment_questions_incorrect(self, user_id: str):
+    def increment_questions_incorrect(self, user_id: str) -> None:
+        self.add_user_if_doesnt_exist(user_id)
+
         new_questions_incorrect = self.get_questions_answered_correctly(user_id) + 1
 
         self.cur.execute("UPDATE leaderboard SET questions_answered_incorrectly = ? WHERE user_id = ?", (new_questions_incorrect, user_id))
